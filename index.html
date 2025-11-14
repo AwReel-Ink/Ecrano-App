@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Évaluation, Classification, Rangement et Archivage Numérique des Œuvres">
+    <meta name="theme-color" content="#e94560">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="icons/icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="96x96" href="icons/icon-96x96.png">
+    <link rel="apple-touch-icon" sizes="128x128" href="icons/icon-128x128.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="384x384" href="icons/icon-384x384.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512x512.png">
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16x16.png">
+    
+    <title>ÉCRANO - Évaluation, Classification, Rangement et Archivage Numérique des Œuvres</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Page d'Accueil -->
+    <div id="home-page" class="page active">
+        <header class="app-header">
+            <h1>🎬 ÉCRANO</h1>
+            <p>Évaluation, Classification, Rangement et Archivage Numérique des Œuvres</p>
+        </header>
+
+        <div class="home-stats">
+            <div class="stat-card">
+                <h3 id="total-films">0</h3>
+                <p>Films</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="total-bluray">0</h3>
+                <p>Blu-ray</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="total-dvd">0</h3>
+                <p>DVD</p>
+            </div>
+        </div>
+
+        <div class="home-buttons">
+            <button class="home-btn" onclick="showPage('my-films-page')">
+                🎬 Mes Films
+            </button>
+            <button class="home-btn" onclick="showPage('search-page')">
+                🔍 Rechercher un Film
+            </button>
+            <button class="home-btn add-btn" onclick="showPage('add-film-page')">
+                ➕ Ajouter un Film
+            </button>
+            <button class="home-btn" onclick="showPage('settings-page')">
+                ⚙️ Paramètres
+            </button>
+        </div>
+    </div>
+
+    <!-- Page Mes Films -->
+    <div id="my-films-page" class="page">
+        <header class="page-header">
+            <button class="back-btn" onclick="showPage('home-page')">← Retour</button>
+            <h2>🎬 Mes Films</h2>
+        </header>
+
+        <div class="search-container">
+            <input type="text" id="films-search" placeholder="Rechercher un film..." oninput="displayFilms()">
+        </div>
+
+        <div class="sort-container">
+            <label>Trier par :</label>
+            <select id="sort-select" onchange="displayFilms()">
+                <option value="name-asc">Nom (A-Z)</option>
+                <option value="name-desc">Nom (Z-A)</option>
+                <option value="year-desc">Année (récent)</option>
+                <option value="year-asc">Année (ancien)</option>
+                <option value="genre-asc">Genre (A-Z)</option>
+                <option value="rating-desc">Note perso (haute)</option>
+                <option value="rating-asc">Note perso (basse)</option>
+                <option value="age-asc">Âge (jeune)</option>
+                <option value="age-desc">Âge (adulte)</option>
+            </select>
+        </div>
+
+        <div id="films-list" class="films-grid"></div>
+    </div>
+
+    <!-- Page Recherche -->
+    <div id="search-page" class="page">
+        <header class="page-header">
+            <button class="back-btn" onclick="showPage('home-page')">← Retour</button>
+            <h2>🔍 Recherche Avancée</h2>
+        </header>
+
+        <div class="search-form">
+            <div class="form-group">
+                <label>Nom du film</label>
+                <input type="text" id="search-name" placeholder="Rechercher..." oninput="searchFilms()">
+            </div>
+
+            <div class="form-group">
+                <label>Genre</label>
+                <select id="search-genre" onchange="searchFilms()">
+                    <option value="">Tous les genres</option>
+                    <option value="Action">Action</option>
+                    <option value="Aventure">Aventure</option>
+                    <option value="Animation">Animation</option>
+                    <option value="Comédie">Comédie</option>
+                    <option value="Drame">Drame</option>
+                    <option value="Fantastique">Fantastique</option>
+                    <option value="Horreur">Horreur</option>
+                    <option value="Science-Fiction">Science-Fiction</option>
+                    <option value="Thriller">Thriller</option>
+                    <option value="Romance">Romance</option>
+                    <option value="Documentaire">Documentaire</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Âge minimum</label>
+                <select id="search-age" onchange="searchFilms()">
+                    <option value="">Tous les âges</option>
+                    <option value="Tous public">🟢 Tous public</option>
+                    <option value="-10 ans">🔵 Accord parental (-10 ans)</option>
+                    <option value="-12 ans">🟠 Interdit -12 ans</option>
+                    <option value="-16 ans">🔴 Interdit -16 ans</option>
+                    <option value="-18 ans">⚫ Interdit -18 ans</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Note minimum</label>
+                <select id="search-rating" onchange="searchFilms()">
+                    <option value="0">Toutes les notes</option>
+                    <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+                    <option value="4">⭐⭐⭐⭐ (4+)</option>
+                    <option value="3">⭐⭐⭐ (3+)</option>
+                    <option value="2">⭐⭐ (2+)</option>
+                    <option value="1">⭐ (1+)</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="search-results" class="films-grid"></div>
+    </div>
+
+    <!-- Page Ajout de Film -->
+    <div id="add-film-page" class="page">
+        <header class="page-header">
+            <button class="back-btn" onclick="showPage('home-page')">← Retour</button>
+            <h2>➕ Ajouter un Film</h2>
+        </header>
+
+        <form id="add-film-form" class="add-form" onsubmit="event.preventDefault(); addFilm();">
+            <div class="form-group">
+                <label>Nom du film *</label>
+                <input type="text" id="film-name" required placeholder="Entrez le nom du film">
+            </div>
+
+            <div class="external-search-buttons" style="margin-bottom: 20px;">
+                <button type="button" class="search-external-btn allocine-btn" onclick="searchOnAllocine()">
+                    🎥 Chercher sur Allociné
+                </button>
+                <button type="button" class="search-external-btn rotten-btn" onclick="searchOnRottenTomatoes()">
+                    🍅 Chercher sur Rotten Tomatoes
+                 </button>
+            </div>
+
+            <div class="form-group">
+                <label>Année de sortie *</label>
+                <input type="number" id="film-year" min="1888" max="2100" required placeholder="Ex: 2024">
+            </div>
+
+            <!-- Images Recto/Verso -->
+            <div class="image-section">
+                <h3>📸 Image Recto</h3>
+                <div class="image-inputs">
+                    <button type="button" class="img-btn" onclick="document.getElementById('camera-recto').click()">
+                        📷 Photo
+                    </button>
+                    <button type="button" class="img-btn" onclick="document.getElementById('gallery-recto').click()">
+                        🖼️ Galerie
+                    </button>
+                    <button type="button" class="img-btn" onclick="addImageFromURL('recto')">
+                        🔗 URL
+                    </button>
+                </div>
+                <input type="file" id="camera-recto" accept="image/*" capture="camera" style="display: none;" onchange="handleImageUpload(event, 'recto')">
+                <input type="file" id="gallery-recto" accept="image/*" style="display: none;" onchange="handleImageUpload(event, 'recto')">
+                <img id="image-preview-recto" class="image-preview" style="display: none;">
+            </div>
+
+            <div class="image-section">
+                <h3>📸 Image Verso</h3>
+                <div class="image-inputs">
+                    <button type="button" class="img-btn" onclick="document.getElementById('camera-verso').click()">
+                        📷 Photo
+                    </button>
+                    <button type="button" class="img-btn" onclick="document.getElementById('gallery-verso').click()">
+                        🖼️ Galerie
+                    </button>
+                    <button type="button" class="img-btn" onclick="addImageFromURL('verso')">
+                        🔗 URL
+                    </button>
+                </div>
+                <input type="file" id="camera-verso" accept="image/*" capture="camera" style="display: none;" onchange="handleImageUpload(event, 'verso')">
+                <input type="file" id="gallery-verso" accept="image/*" style="display: none;" onchange="handleImageUpload(event, 'verso')">
+                <img id="image-preview-verso" class="image-preview" style="display: none;">
+            </div>
+
+            <div class="form-group">
+                <label>Genre *</label>
+                <select id="film-genre" required>
+                    <option value="">Sélectionnez un genre</option>
+                    <option value="Action">Action</option>
+                    <option value="Aventure">Aventure</option>
+                    <option value="Animation">Animation</option>
+                    <option value="Comédie">Comédie</option>
+                    <option value="Drame">Drame</option>
+                    <option value="Fantastique">Fantastique</option>
+                    <option value="Horreur">Horreur</option>
+                    <option value="Science-Fiction">Science-Fiction</option>
+                    <option value="Thriller">Thriller</option>
+                    <option value="Romance">Romance</option>
+                    <option value="Documentaire">Documentaire</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Durée *</label>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <select id="duration-format" onchange="toggleDurationInputs()" style="width: 120px;">
+                        <option value="minutes">Minutes</option>
+                        <option value="hours">Heures</option>
+                    </select>
+                    
+                    <!-- Format Minutes -->
+                    <div id="duration-minutes-input" style="display: flex; gap: 5px; align-items: center;">
+                        <input type="number" id="film-duration-min" min="1" placeholder="98" style="width: 80px;">
+                        <span>min</span>
+                    </div>
+                    
+                    <!-- Format Heures -->
+                    <div id="duration-hours-input" style="display: none; gap: 5px; align-items: center;">
+                        <input type="number" id="film-duration-hours" min="0" max="23" placeholder="1" style="width: 60px;">
+                        <span>h</span>
+                        <input type="number" id="film-duration-mins" min="0" max="59" placeholder="27" style="width: 60px;">
+                        <span>min</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Âge minimum *</label>
+                <select id="film-age" required>
+                    <option value="">Sélectionnez</option>
+                    <option value="Tous public">🟢 Tous public</option>
+                    <option value="-10 ans">🔵 Accord parental (-10 ans)</option>
+                    <option value="-12 ans">🟠 Interdit -12 ans</option>
+                    <option value="-16 ans">🔴 Interdit -16 ans</option>
+                    <option value="-18 ans">⚫ Interdit -18 ans</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Synopsis</label>
+                <textarea id="film-pitch" rows="4" placeholder="Résumé du film..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Note Allociné (%)</label>
+                <input type="number" id="film-allocine" min="0" max="100" placeholder="Ex: 75">
+            </div>
+
+            <div class="form-group">
+                <label>Note Rotten Tomatoes (%)</label>
+                <input type="number" id="film-rotten" min="0" max="100" placeholder="Ex: 85">
+            </div>
+
+            <div class="form-group">
+                <label>Ma note personnelle</label>
+                <div class="star-rating">
+                    <span class="star" data-rating="1" onclick="setRating(1)">☆</span>
+                    <span class="star" data-rating="2" onclick="setRating(2)">☆</span>
+                    <span class="star" data-rating="3" onclick="setRating(3)">☆</span>
+                    <span class="star" data-rating="4" onclick="setRating(4)">☆</span>
+                    <span class="star" data-rating="5" onclick="setRating(5)">☆</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Format *</label>
+                <select id="film-format" required>
+                    <option value="">Sélectionnez</option>
+                    <option value="Blu-ray">Blu-ray</option>
+                    <option value="DVD">DVD</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Résolution</label>
+                <select id="film-resolution">
+                    <option value="">Sélectionnez</option>
+                    <option value="480p">480p (SD)</option>
+                    <option value="720p">720p (HD)</option>
+                    <option value="1080p">1080p (Full HD)</option>
+                    <option value="4K">4K (Ultra HD)</option>
+                    <option value="8K">8K</option>
+                </select>
+            </div>
+
+            <button type="submit" class="submit-btn">✅ Ajouter le Film</button>
+        </form>
+    </div>
+
+    <!-- Page Détails du Film -->
+    <div id="film-detail-page" class="page">
+        <header class="page-header">
+            <button class="back-btn" onclick="goBackFromDetail()">← Retour</button>
+            <h2 id="detail-title"></h2>
+        </header>
+
+        <div id="film-detail-content" class="film-detail"></div>
+
+        <div class="detail-actions">
+            <button class="btn-primary" onclick="editFilm()" style="margin-left: 10px;">
+    <i class="fas fa-edit"></i> Modifier
+</button>
+            <button class="danger-btn" onclick="deleteFilm()">🗑️ Supprimer</button>
+        </div>
+    </div>
+
+    <!-- Page Paramètres -->
+    <div id="settings-page" class="page">
+        <header class="page-header">
+            <button class="back-btn" onclick="showPage('home-page')">← Retour</button>
+            <h2>⚙️ Paramètres</h2>
+        </header>
+
+        <div class="settings-container">
+            <div class="settings-section">
+                <h3>📦 Sauvegarde</h3>
+                <button class="settings-btn" onclick="exportLibrary()">
+                    📤 Exporter la Bibliothèque
+                </button>
+                <button class="settings-btn" onclick="document.getElementById('import-file').click()">
+                    📥 Importer une Bibliothèque
+                </button>
+                <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importLibrary(event)">
+            </div>
+
+            <div class="settings-section">
+                <h3>ℹ️ À propos</h3>
+                <p><strong>Application :</strong> ÉCRANO</p>
+                <p><strong>Version :</strong> 1.0.0</p>
+                <p><strong>Créateur :</strong> © LEROY Aurélien - 2025</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
