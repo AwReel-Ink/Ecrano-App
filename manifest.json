@@ -2,7 +2,7 @@
   "name": "ÉCRANO - Gestion de Collection Films",
   "short_name": "ÉCRANO",
   "description": "Évaluation, Classification, Rangement et Archivage Numérique des Œuvres",
-  "start_url": "/",
+  "start_url": "start_url": "/Ecrano-App/",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#e94560",
@@ -58,3 +58,4 @@
     }
   ]
 }
+
