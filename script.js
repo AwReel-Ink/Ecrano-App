@@ -585,15 +585,15 @@ function showMessage(message, type = 'success') {
 // ========================================
 // 📱 ENREGISTREMENT DU SERVICE WORKER (PWA)
 // ========================================
-
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register('/Ecrano-App/sw.js')
             .then(registration => {
-                console.log('✅ Service Worker enregistré:', registration.scope);
+                console.log('✅ Service Worker enregistré:', registration);
             })
             .catch(error => {
                 console.log('❌ Erreur Service Worker:', error);
             });
     });
 }
+
