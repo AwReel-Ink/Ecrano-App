@@ -3,6 +3,7 @@
   "short_name": "ÉCRANO",
   "description": "Gérez votre collection de films facilement",
   "start_url": "/Ecrano-App/",
+  "id": "/Ecrano-App/",
   "display": "standalone",
   "background_color": "#0f0e17",
   "theme_color": "#e94560",
@@ -42,3 +43,4 @@
     }
   ]
 }
+
