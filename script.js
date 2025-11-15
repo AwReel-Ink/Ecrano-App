@@ -18,18 +18,38 @@ document.addEventListener('DOMContentLoaded', () => {
 function showPage(pageId) {
     const pages = document.querySelectorAll('.page');
     pages.forEach(page => page.classList.remove('active'));
-    
+
     if (pageId !== 'film-detail-page') {
         previousPage = Array.from(pages).find(p => p.classList.contains('active'))?.id || 'home-page';
     }
-    
+
+    // 🆕 RÉINITIALISER si on quitte la page d'ajout
+    if (pageId !== 'add-film-page' && isEditMode) {
+        isEditMode = false;
+        editingFilmId = null;
+        const addButton = document.querySelector('#add-film-view .btn-primary');
+        if (addButton) {
+            addButton.innerHTML = '<i class="fas fa-plus"></i> Ajouter le film';
+        }
+    }
+
+    // 🆕 RÉINITIALISER le formulaire si on arrive sur la page d'ajout sans être en mode édition
+    if (pageId === 'add-film-page' && !isEditMode) {
+        resetForm();
+    }
+
     document.getElementById(pageId).classList.add('active');
-    
+
     if (pageId === 'my-films-page') {
         displayFilms();
     } else if (pageId === 'search-page') {
         searchFilms();
     }
+}
+
+function cancelEdit() {
+    resetForm();
+    showPage('my-films-page');
 }
 
 function goBackFromDetail() {
@@ -259,6 +279,16 @@ function resetForm() {
     personalRating = 0;
     setRating(0);
     toggleDurationInputs();
+    
+    // 🆕 RÉINITIALISER le mode édition
+    isEditMode = false;
+    editingFilmId = null;
+    
+    // 🆕 REMETTRE le texte du bouton
+    const addButton = document.querySelector('#add-film-view .btn-primary');
+    if (addButton) {
+        addButton.innerHTML = '<i class="fas fa-plus"></i> Ajouter le film';
+    }
 }
 
 // Affichage des films
