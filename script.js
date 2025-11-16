@@ -581,43 +581,45 @@ function exportLibrary() {
 }
 
 function importLibrary() {
-    // Créer un input file invisible
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'application/json';
+    input.accept = '.json,application/json,text/*'; // ✅ Plus permissif pour Android
     
-    // Gérer la sélection du fichier
-    input.onchange = (event) => {
+    input.onchange = async (event) => { // ✅ async pour meilleure gestion
         const file = event.target.files[0];
         if (!file) return;
         
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const imported = JSON.parse(e.target.result);
-                
-                // Validation basique
-                if (!Array.isArray(imported)) {
-                    showMessage('Fichier invalide : ce n\'est pas une bibliothèque', 'error');
-                    return;
-                }
-                
-                if (confirm(`Importer ${imported.length} films ? Cela remplacera votre bibliothèque actuelle (${films.length} films).`)) {
-                    films = imported;
-                    saveFilms();
-                    updateStats();
-                    displayFilms();
-                    showMessage('Bibliothèque importée avec succès !', 'success');
-                }
-            } catch (error) {
-                console.error('Erreur import:', error);
-                showMessage('Fichier JSON invalide', 'error');
+        try {
+            // ✅ Méthode moderne plus fiable
+            const text = await file.text();
+            const imported = JSON.parse(text);
+            
+            // Validation
+            if (!Array.isArray(imported)) {
+                showMessage('Fichier invalide : format incorrect', 'error');
+                console.error('Contenu reçu:', imported);
+                return;
             }
-        };
-        reader.readAsText(file);
+            
+            // Vérifier que c'est bien des films
+            if (imported.length > 0 && !imported[0].title) {
+                showMessage('Fichier invalide : ce ne sont pas des films', 'error');
+                return;
+            }
+            
+            if (confirm(`Importer ${imported.length} films ?\nCela remplacera vos ${films.length} films actuels.`)) {
+                films = imported;
+                saveFilms();
+                updateStats();
+                displayFilms();
+                showMessage(`✅ ${imported.length} films importés !`, 'success');
+            }
+        } catch (error) {
+            console.error('Erreur complète:', error);
+            showMessage(`Erreur : ${error.message}`, 'error');
+        }
     };
     
-    // Déclencher le sélecteur de fichier
     input.click();
 }
 
