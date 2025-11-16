@@ -1,5 +1,5 @@
-const CACHE_NAME = 'ecrano-v1.2.4';
-const BASE_PATH = '/Ecrano-App'; // ✅ Chemin GitHub Pages
+const CACHE_NAME = 'ecrano-v1.2.5'; // ✅ Change la version
+const BASE_PATH = '/Ecrano-App';
 
 const urlsToCache = [
   `${BASE_PATH}/`,
@@ -9,35 +9,34 @@ const urlsToCache = [
   `${BASE_PATH}/manifest.json`
 ];
 
-// Installation du Service Worker
+// ========================================
+// 🔧 INSTALLATION
+// ========================================
 self.addEventListener('install', event => {
-  console.log('🔧 Installation du Service Worker...');
+  console.log('🔧 Installation du Service Worker v1.2.5...');
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('📦 Mise en cache des fichiers...');
-        return cache.addAll(urlsToCache).catch(err => {
-          console.error('❌ Erreur lors de la mise en cache:', err);
-          // Continue même si certains fichiers échouent
-          return urlsToCache.reduce((promise, url) => {
-            return promise.then(() => {
-              return cache.add(url).catch(err => {
-                console.warn(`⚠️ Impossible de mettre en cache: ${url}`, err);
-              });
-            });
-          }, Promise.resolve());
-        });
+        return cache.addAll(urlsToCache);
       })
       .then(() => {
         console.log('✅ Service Worker installé');
-        return self.skipWaiting(); // Active immédiatement
+        return self.skipWaiting(); // ✅ Active immédiatement
+      })
+      .catch(err => {
+        console.error('❌ Erreur installation:', err);
       })
   );
 });
 
-// Activation et nettoyage des anciens caches
+// ========================================
+// 🔄 ACTIVATION
+// ========================================
 self.addEventListener('activate', event => {
-  console.log('🔄 Activation du Service Worker...');
+  console.log('🔄 Activation du Service Worker v1.2.5...');
+  
   event.waitUntil(
     caches.keys()
       .then(cacheNames => {
@@ -52,52 +51,78 @@ self.addEventListener('activate', event => {
       })
       .then(() => {
         console.log('✅ Service Worker activé');
-        return self.clients.claim(); // Prend le contrôle immédiatement
+        return self.clients.claim(); // ✅ Prend le contrôle immédiatement
       })
   );
 });
 
-// Stratégie Cache First avec fallback réseau
+// ========================================
+// 📡 FETCH - STRATÉGIE AMÉLIORÉE
+// ========================================
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+  
+  // ⚠️ TOUJOURS vérifier le réseau pour sw.js et manifest.json
+  if (url.pathname.includes('sw.js') || url.pathname.includes('manifest.json')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   // Ignorer les requêtes non-GET
   if (event.request.method !== 'GET') {
     return;
   }
 
+  // ✅ STRATÉGIE : Network First pour les fichiers HTML/CSS/JS
+  // (pour avoir toujours la dernière version)
+  if (url.pathname.endsWith('.html') || 
+      url.pathname.endsWith('.css') || 
+      url.pathname.endsWith('.js') ||
+      url.pathname === `${BASE_PATH}/` ||
+      url.pathname === BASE_PATH) {
+    
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          // ✅ Mise à jour du cache avec la nouvelle version
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
+          console.log('🌐 Depuis le réseau (mis en cache):', event.request.url);
+          return response;
+        })
+        .catch(() => {
+          // ❌ Fallback vers le cache si hors ligne
+          console.log('📦 Fallback cache:', event.request.url);
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // ✅ STRATÉGIE : Cache First pour les images et autres assets
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Retourne depuis le cache si disponible
         if (response) {
           console.log('📦 Depuis le cache:', event.request.url);
           return response;
         }
 
-        // Sinon, récupère depuis le réseau
-        console.log('🌐 Depuis le réseau:', event.request.url);
         return fetch(event.request)
           .then(response => {
-            // Vérifie si la réponse est valide
-            if (!response || response.status !== 200 || response.type === 'opaque') {
+            if (!response || response.status !== 200) {
               return response;
             }
 
-            // Clone et met en cache pour les prochaines fois
             const responseToCache = response.clone();
             caches.open(CACHE_NAME).then(cache => {
               cache.put(event.request, responseToCache);
             });
 
             return response;
-          })
-          .catch(error => {
-            console.error('❌ Erreur réseau:', error);
-            // Fallback vers index.html pour les routes HTML
-            if (event.request.headers.get('accept').includes('text/html')) {
-              return caches.match(`${BASE_PATH}/index.html`);
-            }
           });
       })
   );
 });
-
