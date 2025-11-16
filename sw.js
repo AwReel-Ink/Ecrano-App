@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ecrano-v1.2.5'; // ✅ Change la version
+const CACHE_NAME = 'ecrano-v2.0.0'; // ✅ Change la version
 const BASE_PATH = '/Ecrano-App';
 
 const urlsToCache = [
@@ -126,3 +126,4 @@ self.addEventListener('fetch', event => {
       })
   );
 });
+
