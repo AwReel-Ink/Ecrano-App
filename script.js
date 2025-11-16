@@ -6,10 +6,84 @@ let previousPage = 'home-page';
 let isEditMode = false;
 let editingFilmId = null;
 let currentFilmId = null;
+// ==================== IndexedDB ====================
+let db;
+
+// Initialiser IndexedDB
+function initDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('EcranoFilmsDB', 1);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+            db = request.result;
+            resolve(db);
+        };
+        
+        request.onupgradeneeded = (event) => {
+            db = event.target.result;
+            if (!db.objectStoreNames.contains('films')) {
+                db.createObjectStore('films', { keyPath: 'id' });
+            }
+        };
+    });
+}
+
+// Sauvegarder les films dans IndexedDB
+async function saveFilms() {
+    try {
+        if (!db) await initDB();
+
+        const transaction = db.transaction(['films'], 'readwrite');
+        const store = transaction.objectStore('films');
+
+        // Vider le store
+        await new Promise((resolve, reject) => {
+            const clearRequest = store.clear();
+            clearRequest.onsuccess = resolve;
+            clearRequest.onerror = reject;
+        });
+
+        // Ajouter tous les films
+        for (const film of films) {
+            await new Promise((resolve, reject) => {
+                const addRequest = store.add(film);
+                addRequest.onsuccess = resolve;
+                addRequest.onerror = reject;
+            });
+        }
+
+        console.log('💾 Films sauvegardés dans IndexedDB:', films.length);
+        updateStats(); // ✅ Mettre à jour les stats après sauvegarde
+    } catch (error) {
+        console.error('❌ Erreur lors de la sauvegarde:', error);
+        showMessage('Erreur lors de la sauvegarde', 'error');
+    }
+}
+
+// Charger les films depuis IndexedDB
+async function loadFilms() {
+    if (!db) await initDB();
+    
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['films'], 'readonly');
+        const store = transaction.objectStore('films');
+        const request = store.getAll();
+        
+        request.onsuccess = () => {
+            films = request.result || [];
+            console.log('📂 Films chargés depuis IndexedDB:', films.length);
+            resolve(films);
+        };
+        
+        request.onerror = () => reject(request.error);
+    });
+}
 
 // Initialisation
-document.addEventListener('DOMContentLoaded', () => {
-    loadFilms();
+document.addEventListener('DOMContentLoaded', async () => {
+    await initDB();        // ✅ Attendre l'initialisation
+    await loadFilms();     // ✅ Attendre le chargement
     updateStats();
     displayFilms();
 });
@@ -191,7 +265,7 @@ function formatDuration(minutes, format = 'both') {
 }
 
 // Ajout d'un film
-function addFilm() {
+async function addFilm() {
     const name = document.getElementById('film-name').value.trim();
     const year = document.getElementById('film-year').value.trim();
     const genre = document.getElementById('film-genre').value;
@@ -225,7 +299,7 @@ function addFilm() {
                 resolution: document.getElementById('film-resolution').value
             };
             
-            saveFilms();
+            await saveFilms();
             showMessage('Film modifié avec succès !', 'success');
             
             // Réinitialiser le mode édition
@@ -266,7 +340,7 @@ function addFilm() {
     };
 
     films.push(film);
-    saveFilms();
+    await saveFilms();
     showMessage('Film ajouté avec succès !', 'success');
     resetForm();
     updateStats();
@@ -487,13 +561,13 @@ function editFilm() {
 
 
 // Suppression d'un film
-function deleteFilm() {
+async function deleteFilm() {
     if (currentFilmIndex === null) return;
     
     const film = films[currentFilmIndex];
     if (confirm(`Êtes-vous sûr de vouloir supprimer "${film.name}" ?`)) {
         films.splice(currentFilmIndex, 1);
-        saveFilms();
+        await saveFilms();
         showMessage('Film supprimé', 'success');
         updateStats();
         showPage(previousPage);
@@ -556,18 +630,6 @@ function searchOnRottenTomatoes() {
     window.open(url, '_blank');
 }
 
-// Sauvegarde et chargement
-function saveFilms() {
-    localStorage.setItem('ecrano-films', JSON.stringify(films));
-}
-
-function loadFilms() {
-    const saved = localStorage.getItem('ecrano-films');
-    if (saved) {
-        films = JSON.parse(saved);
-    }
-}
-
 // Export/Import
 function exportLibrary() {
     const dataStr = JSON.stringify(films, null, 2);
@@ -595,46 +657,27 @@ function importLibrary() {
             const imported = JSON.parse(text);
             
             console.log('📊 Films importés:', imported.length);
-            console.log('📄 Premier film:', imported[0]);
             
             if (!Array.isArray(imported) || imported.length === 0) {
                 showMessage('Fichier invalide ou vide', 'error');
                 return;
             }
             
-            // Vérifier que c'est bien des films
-            if (!imported[0].name && !imported[0].title) {
-                showMessage('Fichier invalide : ce ne sont pas des films', 'error');
-                return;
-            }
-            
             if (confirm(`Importer ${imported.length} films ?\nCela remplacera vos ${films.length} films actuels.`)) {
-                // ✅ Remplacer les films
                 films = imported;
                 
-                // ✅ Sauvegarder dans localStorage
-                localStorage.setItem('films', JSON.stringify(films));
+                // ✅ Sauvegarder dans IndexedDB au lieu de localStorage
+                await saveFilms();
                 
-                console.log('💾 Films sauvegardés:', films.length);
-                
-                // ✅ Mettre à jour les stats
                 updateStats();
+                showPage('my-films-page'); // ✅ Ou 'library-page' selon ton HTML
                 
-                // ✅ Afficher la page bibliothèque
-                showPage('library-page');
-                
-                // ✅ Réinitialiser la recherche
                 const searchInput = document.getElementById('films-search');
-                if (searchInput) {
-                    searchInput.value = '';
-                }
+                if (searchInput) searchInput.value = '';
                 
-                // ✅ Afficher les films
                 displayFilms();
                 
-                console.log('✅ Import terminé - Films affichés');
-                
-                showMessage(`✅ ${imported.length} films importés avec succès !`, 'success');
+                showMessage(`✅ ${imported.length} films importés !`, 'success');
             }
         } catch (error) {
             console.error('❌ Erreur import:', error);
