@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ecrano-v1.2.3';
+const CACHE_NAME = 'ecrano-v1.2.4';
 const BASE_PATH = '/Ecrano-App'; // ✅ Chemin GitHub Pages
 
 const urlsToCache = [
@@ -100,3 +100,4 @@ self.addEventListener('fetch', event => {
       })
   );
 });
+
