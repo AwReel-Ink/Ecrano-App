@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ecrano-v1.1.0';
+const CACHE_NAME = 'ecrano-v1.2.1';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -59,3 +59,4 @@ self.addEventListener('fetch', event => {
       })
   );
 });
+
