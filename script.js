@@ -1,4 +1,6 @@
-// Variables globales
+// ========================================
+// 🌍 VARIABLES GLOBALES
+// ========================================
 let films = [];
 let personalRating = 0;
 let currentFilmIndex = null;
@@ -6,89 +8,163 @@ let previousPage = 'home-page';
 let isEditMode = false;
 let editingFilmId = null;
 let currentFilmId = null;
-// ==================== IndexedDB ====================
-let db;
+let db; // Pour IndexedDB (navigateur uniquement)
 
-// Initialiser IndexedDB
-function initDB() {
+// ========================================
+// 🔍 DÉTECTION DE L'ENVIRONNEMENT
+// ========================================
+const isElectron = typeof window !== 'undefined' && 
+                   typeof window.electronAPI !== 'undefined';
+
+console.log('========================================');
+console.log('🔍 DÉTECTION ENVIRONNEMENT');
+console.log('========================================');
+console.log('Environnement:', isElectron ? 'Electron ✅' : 'Navigateur 🌐');
+console.log('electronAPI disponible:', !!window.electronAPI);
+console.log('========================================');
+
+// ========================================
+// 🗄️ IndexedDB (NAVIGATEUR UNIQUEMENT)
+// ========================================
+async function initDB() {
+    if (isElectron) return; // ❌ Pas d'IndexedDB sur Electron
+    
     return new Promise((resolve, reject) => {
         const request = indexedDB.open('EcranoFilmsDB', 1);
-        
+
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
             db = request.result;
+            console.log('✅ IndexedDB initialisé');
             resolve(db);
         };
-        
+
         request.onupgradeneeded = (event) => {
             db = event.target.result;
             if (!db.objectStoreNames.contains('films')) {
-                db.createObjectStore('films', { keyPath: 'id' });
+                const store = db.createObjectStore('films', { keyPath: 'id' });
+                console.log('✅ Store "films" créé');
             }
         };
     });
 }
 
-// Sauvegarder les films dans IndexedDB
+// ========================================
+// 💾 SAUVEGARDE UNIFIÉE
+// ========================================
 async function saveFilms() {
+    console.log('💾 Sauvegarde de', films.length, 'films...');
+    
     try {
-        if (!db) await initDB();
+        if (isElectron) {
+            // 📁 ELECTRON : Sauvegarder dans library.json
+            const result = await window.electronAPI.saveLibrary(films);
+            console.log('✅ Sauvegarde Electron OK:', result);
+            
+        } else {
+            // 🗄️ NAVIGATEUR : Sauvegarder dans IndexedDB
+            if (!db) await initDB();
 
-        const transaction = db.transaction(['films'], 'readwrite');
-        const store = transaction.objectStore('films');
+            const transaction = db.transaction(['films'], 'readwrite');
+            const store = transaction.objectStore('films');
 
-        // Vider le store
-        await new Promise((resolve, reject) => {
-            const clearRequest = store.clear();
-            clearRequest.onsuccess = resolve;
-            clearRequest.onerror = reject;
-        });
-
-        // Ajouter tous les films
-        for (const film of films) {
+            // Vider le store
             await new Promise((resolve, reject) => {
-                const addRequest = store.add(film);
-                addRequest.onsuccess = resolve;
-                addRequest.onerror = reject;
+                const clearRequest = store.clear();
+                clearRequest.onsuccess = resolve;
+                clearRequest.onerror = reject;
             });
-        }
 
-        console.log('💾 Films sauvegardés dans IndexedDB:', films.length);
-        updateStats(); // ✅ Mettre à jour les stats après sauvegarde
+            // Ajouter tous les films
+            for (const film of films) {
+                await new Promise((resolve, reject) => {
+                    const addRequest = store.add(film);
+                    addRequest.onsuccess = resolve;
+                    addRequest.onerror = reject;
+                });
+            }
+            
+            console.log('✅ Sauvegarde IndexedDB OK:', films.length);
+        }
+        
+        updateStats(); // Mettre à jour les statistiques
+        
     } catch (error) {
         console.error('❌ Erreur lors de la sauvegarde:', error);
         showMessage('Erreur lors de la sauvegarde', 'error');
     }
 }
 
-// Charger les films depuis IndexedDB
+// ========================================
+// 📂 CHARGEMENT UNIFIÉ
+// ========================================
 async function loadFilms() {
-    if (!db) await initDB();
+    console.log('📂 Chargement de la bibliothèque...');
     
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(['films'], 'readonly');
-        const store = transaction.objectStore('films');
-        const request = store.getAll();
+    try {
+        if (isElectron) {
+            // 📁 ELECTRON : Charger depuis library.json
+            films = await window.electronAPI.loadLibrary();
+            console.log('✅ Chargé depuis Electron:', films.length, 'films');
+            
+        } else {
+            // 🗄️ NAVIGATEUR : Charger depuis IndexedDB
+            if (!db) await initDB();
+
+            films = await new Promise((resolve, reject) => {
+                const transaction = db.transaction(['films'], 'readonly');
+                const store = transaction.objectStore('films');
+                const request = store.getAll();
+
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => reject(request.error);
+            });
+            
+            console.log('✅ Chargé depuis IndexedDB:', films.length, 'films');
+        }
         
-        request.onsuccess = () => {
-            films = request.result || [];
-            console.log('📂 Films chargés depuis IndexedDB:', films.length);
-            resolve(films);
-        };
+        return films;
         
-        request.onerror = () => reject(request.error);
-    });
+    } catch (error) {
+        console.error('❌ Erreur lors du chargement:', error);
+        showMessage('Erreur lors du chargement', 'error');
+        return [];
+    }
 }
 
-// Initialisation
+// ========================================
+// 🚀 INITIALISATION AU DÉMARRAGE
+// ========================================
 document.addEventListener('DOMContentLoaded', async () => {
-    await initDB();        // ✅ Attendre l'initialisation
-    await loadFilms();     // ✅ Attendre le chargement
-    updateStats();
-    displayFilms();
+    console.log('========================================');
+    console.log('🚀 INITIALISATION');
+    console.log('========================================');
+    
+    try {
+        // Initialiser la base de données (Electron ou IndexedDB)
+        if (!isElectron) {
+            await initDB();
+        }
+        
+        // Charger les films
+        await loadFilms();
+        
+        // Afficher les films
+        displayFilms();
+        updateStats();
+        
+        console.log('✅ Initialisation terminée');
+        console.log('========================================');
+        
+    } catch (error) {
+        console.error('❌ Erreur lors de l\'initialisation:', error);
+        showMessage('Erreur lors de l\'initialisation', 'error');
+    }
 });
 
-// Gestion des pages
+// ========================================
+// 📄 GESTION DES PAGES
+// ========================================
 function showPage(pageId) {
     const pages = document.querySelectorAll('.page');
     pages.forEach(page => page.classList.remove('active'));
@@ -97,7 +173,7 @@ function showPage(pageId) {
         previousPage = Array.from(pages).find(p => p.classList.contains('active'))?.id || 'home-page';
     }
 
-    // 🆕 RÉINITIALISER si on quitte la page d'ajout
+    // Réinitialiser si on quitte la page d'ajout
     if (pageId !== 'add-film-page' && isEditMode) {
         isEditMode = false;
         editingFilmId = null;
@@ -107,14 +183,14 @@ function showPage(pageId) {
         }
     }
 
-    // 🆕 RÉINITIALISER le formulaire si on arrive sur la page d'ajout sans être en mode édition
+    // Réinitialiser le formulaire si on arrive sur la page d'ajout sans être en mode édition
     if (pageId === 'add-film-page' && !isEditMode) {
         resetForm();
     }
 
     document.getElementById(pageId).classList.add('active');
 
-    // ✅ AJOUT : Gérer l'affichage pour library-page ET my-films-page
+    // Gérer l'affichage selon la page
     if (pageId === 'library-page' || pageId === 'my-films-page') {
         displayFilms();
     } else if (pageId === 'search-page') {
