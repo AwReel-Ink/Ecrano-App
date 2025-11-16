@@ -40,7 +40,8 @@ function showPage(pageId) {
 
     document.getElementById(pageId).classList.add('active');
 
-    if (pageId === 'my-films-page') {
+    // ✅ AJOUT : Gérer l'affichage pour library-page ET my-films-page
+    if (pageId === 'library-page' || pageId === 'my-films-page') {
         displayFilms();
     } else if (pageId === 'search-page') {
         searchFilms();
@@ -583,39 +584,60 @@ function exportLibrary() {
 function importLibrary() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json,application/json,text/*'; // ✅ Plus permissif pour Android
+    input.accept = '.json,application/json,text/*';
     
-    input.onchange = async (event) => { // ✅ async pour meilleure gestion
+    input.onchange = async (event) => {
         const file = event.target.files[0];
         if (!file) return;
         
         try {
-            // ✅ Méthode moderne plus fiable
             const text = await file.text();
             const imported = JSON.parse(text);
             
-            // Validation
-            if (!Array.isArray(imported)) {
-                showMessage('Fichier invalide : format incorrect', 'error');
-                console.error('Contenu reçu:', imported);
+            console.log('📊 Films importés:', imported.length);
+            console.log('📄 Premier film:', imported[0]);
+            
+            if (!Array.isArray(imported) || imported.length === 0) {
+                showMessage('Fichier invalide ou vide', 'error');
                 return;
             }
             
             // Vérifier que c'est bien des films
-            if (imported.length > 0 && !imported[0].title) {
+            if (!imported[0].name && !imported[0].title) {
                 showMessage('Fichier invalide : ce ne sont pas des films', 'error');
                 return;
             }
             
             if (confirm(`Importer ${imported.length} films ?\nCela remplacera vos ${films.length} films actuels.`)) {
+                // ✅ Remplacer les films
                 films = imported;
-                saveFilms();
+                
+                // ✅ Sauvegarder dans localStorage
+                localStorage.setItem('films', JSON.stringify(films));
+                
+                console.log('💾 Films sauvegardés:', films.length);
+                
+                // ✅ Mettre à jour les stats
                 updateStats();
+                
+                // ✅ Afficher la page bibliothèque
+                showPage('library-page');
+                
+                // ✅ Réinitialiser la recherche
+                const searchInput = document.getElementById('films-search');
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+                
+                // ✅ Afficher les films
                 displayFilms();
-                showMessage(`✅ ${imported.length} films importés !`, 'success');
+                
+                console.log('✅ Import terminé - Films affichés');
+                
+                showMessage(`✅ ${imported.length} films importés avec succès !`, 'success');
             }
         } catch (error) {
-            console.error('Erreur complète:', error);
+            console.error('❌ Erreur import:', error);
             showMessage(`Erreur : ${error.message}`, 'error');
         }
     };
