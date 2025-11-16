@@ -580,26 +580,45 @@ function exportLibrary() {
     showMessage('Bibliothèque exportée !', 'success');
 }
 
-function importLibrary(event) {
-    const file = event.target.files[0];
-    if (file) {
+function importLibrary() {
+    // Créer un input file invisible
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    
+    // Gérer la sélection du fichier
+    input.onchange = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
                 const imported = JSON.parse(e.target.result);
-                if (confirm(`Importer ${imported.length} films ? Cela remplacera votre bibliothèque actuelle.`)) {
+                
+                // Validation basique
+                if (!Array.isArray(imported)) {
+                    showMessage('Fichier invalide : ce n\'est pas une bibliothèque', 'error');
+                    return;
+                }
+                
+                if (confirm(`Importer ${imported.length} films ? Cela remplacera votre bibliothèque actuelle (${films.length} films).`)) {
                     films = imported;
                     saveFilms();
                     updateStats();
                     displayFilms();
-                    showMessage('Bibliothèque importée !', 'success');
+                    showMessage('Bibliothèque importée avec succès !', 'success');
                 }
             } catch (error) {
-                showMessage('Fichier invalide', 'error');
+                console.error('Erreur import:', error);
+                showMessage('Fichier JSON invalide', 'error');
             }
         };
         reader.readAsText(file);
-    }
+    };
+    
+    // Déclencher le sélecteur de fichier
+    input.click();
 }
 
 // Messages toast
