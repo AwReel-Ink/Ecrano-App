@@ -643,49 +643,44 @@ function exportLibrary() {
     showMessage('Bibliothèque exportée !', 'success');
 }
 
-function importLibrary() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json,application/json,text/*';
-    
-    input.onchange = async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-        
-        try {
-            const text = await file.text();
-            const imported = JSON.parse(text);
-            
-            console.log('📊 Films importés:', imported.length);
-            
-            if (!Array.isArray(imported) || imported.length === 0) {
-                showMessage('Fichier invalide ou vide', 'error');
-                return;
-            }
-            
-            if (confirm(`Importer ${imported.length} films ?\nCela remplacera vos ${films.length} films actuels.`)) {
-                films = imported;
-                
-                // ✅ Sauvegarder dans IndexedDB au lieu de localStorage
-                await saveFilms();
-                
-                updateStats();
-                showPage('my-films-page'); // ✅ Ou 'library-page' selon ton HTML
-                
-                const searchInput = document.getElementById('films-search');
-                if (searchInput) searchInput.value = '';
-                
-                displayFilms();
-                
-                showMessage(`✅ ${imported.length} films importés !`, 'success');
-            }
-        } catch (error) {
-            console.error('❌ Erreur import:', error);
-            showMessage(`Erreur : ${error.message}`, 'error');
+// ✅ NOUVELLE version qui utilise l'input HTML existant
+async function importLibrary(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+        const text = await file.text();
+        const imported = JSON.parse(text);
+
+        console.log('📊 Films importés:', imported.length);
+        console.log('📄 Premier film:', imported[0]);
+
+        if (!Array.isArray(imported) || imported.length === 0) {
+            showMessage('Fichier invalide ou vide', 'error');
+            return;
         }
-    };
-    
-    input.click();
+
+        if (confirm(`Importer ${imported.length} films ?\nCela remplacera vos ${films.length} films actuels.`)) {
+            films = imported;
+            
+            // ✅ Sauvegarde dans IndexedDB
+            await saveFilms();
+            
+            updateStats();
+            displayFilms();
+            
+            const searchInput = document.getElementById('films-search');
+            if (searchInput) searchInput.value = '';
+
+            showMessage(`✅ ${imported.length} films importés !`, 'success');
+        }
+    } catch (error) {
+        console.error('❌ Erreur import:', error);
+        showMessage(`Erreur : ${error.message}`, 'error');
+    }
+
+    // ✅ Réinitialise l'input pour permettre le même fichier
+    event.target.value = '';
 }
 
 // Messages toast
@@ -697,6 +692,22 @@ function showMessage(message, type = 'success') {
         toast.classList.remove('show');
     }, 3000);
 }
+
+// ========================================
+// 🎬 INITIALISATION DE L'APPLICATION
+// ========================================
+window.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 Application chargée');
+    
+    // ✅ Attache l'événement d'import au bouton existant
+    const importInput = document.getElementById('import-file');
+    if (importInput) {
+        importInput.addEventListener('change', importLibrary);
+        console.log('✅ Import attaché');
+    } else {
+        console.warn('⚠️ Input import non trouvé');
+    }
+});
 
 // ========================================
 // 📱 ENREGISTREMENT DU SERVICE WORKER (PWA)
@@ -712,4 +723,3 @@ if ('serviceWorker' in navigator) {
             });
     });
 }
-
