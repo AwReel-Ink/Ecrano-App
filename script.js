@@ -61,12 +61,12 @@ function updateStats() {
     const totalFilms = films.length;
     const totalBluray = films.filter(f => f.format === 'Blu-ray').length;
     const totalDVD = films.filter(f => f.format === 'DVD').length;
-    const totalPV = films.filter(f => f.format === 'Prime Vidéo').length;
+    const totalPrime = films.filter(f => f.format === 'Prime Vidéo').length;
     
     document.getElementById('total-films').textContent = totalFilms;
     document.getElementById('total-bluray').textContent = totalBluray;
     document.getElementById('total-dvd').textContent = totalDVD;
-    document.getElementById('total-prime vidéo').textContent = totalPV;
+    document.getElementById('total-prime').textContent = totalPrime;
 }
 
 // Gestion des images
@@ -312,7 +312,7 @@ function displayFilms() {
     }
 
     container.innerHTML = filteredFilms.map(film => `
-        <div class="film-card ${film.format === 'Blu-ray' ? 'bluray' : 'dvd'}" onclick="showFilmDetail('${film.id}')">
+        <div class="film-card ${film.format === 'Blu-ray' ? 'bluray' : film.format === 'Prime Vidéo' ? 'prime' : 'dvd'}" onclick="showFilmDetail('${film.id}')">
             <img src="${film.imageRecto || 'https://via.placeholder.com/200x300?text=No+Image'}" alt="${film.name}">
             <div class="film-card-info">
                 <h3>${film.name} (${film.year || 'N/A'})</h3>
@@ -526,7 +526,7 @@ function searchFilms() {
     }
 
     container.innerHTML = filtered.map(film => `
-        <div class="film-card ${film.format === 'Blu-ray' ? 'bluray' : 'dvd'}" onclick="showFilmDetail('${film.id}')">
+        <div class="film-card ${film.format === 'Blu-ray' ? 'bluray' : film.format === 'Prime Vidéo' ? 'prime' : 'dvd'}" onclick="showFilmDetail('${film.id}')">
             <img src="${film.imageRecto || 'https://via.placeholder.com/200x300?text=No+Image'}" alt="${film.name}">
             <div class="film-card-info">
                 <h3>${film.name} (${film.year || 'N/A'})</h3>
@@ -628,3 +628,4 @@ if ('serviceWorker' in navigator) {
             });
     });
 }
+
