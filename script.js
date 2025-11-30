@@ -1,6 +1,4 @@
-// ========================================
-// 🌍 VARIABLES GLOBALES
-// ========================================
+// Variables globales
 let films = [];
 let personalRating = 0;
 let currentFilmIndex = null;
@@ -8,163 +6,15 @@ let previousPage = 'home-page';
 let isEditMode = false;
 let editingFilmId = null;
 let currentFilmId = null;
-let db; // Pour IndexedDB (navigateur uniquement)
 
-// ========================================
-// 🔍 DÉTECTION DE L'ENVIRONNEMENT
-// ========================================
-const isElectron = typeof window !== 'undefined' && 
-                   typeof window.electronAPI !== 'undefined';
-
-console.log('========================================');
-console.log('🔍 DÉTECTION ENVIRONNEMENT');
-console.log('========================================');
-console.log('Environnement:', isElectron ? 'Electron ✅' : 'Navigateur 🌐');
-console.log('electronAPI disponible:', !!window.electronAPI);
-console.log('========================================');
-
-// ========================================
-// 🗄️ IndexedDB (NAVIGATEUR UNIQUEMENT)
-// ========================================
-async function initDB() {
-    if (isElectron) return; // ❌ Pas d'IndexedDB sur Electron
-    
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open('EcranoFilmsDB', 1);
-
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => {
-            db = request.result;
-            console.log('✅ IndexedDB initialisé');
-            resolve(db);
-        };
-
-        request.onupgradeneeded = (event) => {
-            db = event.target.result;
-            if (!db.objectStoreNames.contains('films')) {
-                const store = db.createObjectStore('films', { keyPath: 'id' });
-                console.log('✅ Store "films" créé');
-            }
-        };
-    });
-}
-
-// ========================================
-// 💾 SAUVEGARDE UNIFIÉE
-// ========================================
-async function saveFilms() {
-    console.log('💾 Sauvegarde de', films.length, 'films...');
-    
-    try {
-        if (isElectron) {
-            // 📁 ELECTRON : Sauvegarder dans library.json
-            const result = await window.electronAPI.saveLibrary(films);
-            console.log('✅ Sauvegarde Electron OK:', result);
-            
-        } else {
-            // 🗄️ NAVIGATEUR : Sauvegarder dans IndexedDB
-            if (!db) await initDB();
-
-            const transaction = db.transaction(['films'], 'readwrite');
-            const store = transaction.objectStore('films');
-
-            // Vider le store
-            await new Promise((resolve, reject) => {
-                const clearRequest = store.clear();
-                clearRequest.onsuccess = resolve;
-                clearRequest.onerror = reject;
-            });
-
-            // Ajouter tous les films
-            for (const film of films) {
-                await new Promise((resolve, reject) => {
-                    const addRequest = store.add(film);
-                    addRequest.onsuccess = resolve;
-                    addRequest.onerror = reject;
-                });
-            }
-            
-            console.log('✅ Sauvegarde IndexedDB OK:', films.length);
-        }
-        
-        updateStats(); // Mettre à jour les statistiques
-        
-    } catch (error) {
-        console.error('❌ Erreur lors de la sauvegarde:', error);
-        showMessage('Erreur lors de la sauvegarde', 'error');
-    }
-}
-
-// ========================================
-// 📂 CHARGEMENT UNIFIÉ
-// ========================================
-async function loadFilms() {
-    console.log('📂 Chargement de la bibliothèque...');
-    
-    try {
-        if (isElectron) {
-            // 📁 ELECTRON : Charger depuis library.json
-            films = await window.electronAPI.loadLibrary();
-            console.log('✅ Chargé depuis Electron:', films.length, 'films');
-            
-        } else {
-            // 🗄️ NAVIGATEUR : Charger depuis IndexedDB
-            if (!db) await initDB();
-
-            films = await new Promise((resolve, reject) => {
-                const transaction = db.transaction(['films'], 'readonly');
-                const store = transaction.objectStore('films');
-                const request = store.getAll();
-
-                request.onsuccess = () => resolve(request.result || []);
-                request.onerror = () => reject(request.error);
-            });
-            
-            console.log('✅ Chargé depuis IndexedDB:', films.length, 'films');
-        }
-        
-        return films;
-        
-    } catch (error) {
-        console.error('❌ Erreur lors du chargement:', error);
-        showMessage('Erreur lors du chargement', 'error');
-        return [];
-    }
-}
-
-// ========================================
-// 🚀 INITIALISATION AU DÉMARRAGE
-// ========================================
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('========================================');
-    console.log('🚀 INITIALISATION');
-    console.log('========================================');
-    
-    try {
-        // Initialiser la base de données (Electron ou IndexedDB)
-        if (!isElectron) {
-            await initDB();
-        }
-        
-        // Charger les films
-        await loadFilms();
-        
-        // Afficher les films
-        displayFilms();
-        updateStats();
-        
-        console.log('✅ Initialisation terminée');
-        console.log('========================================');
-        
-    } catch (error) {
-        console.error('❌ Erreur lors de l\'initialisation:', error);
-        showMessage('Erreur lors de l\'initialisation', 'error');
-    }
+// Initialisation
+document.addEventListener('DOMContentLoaded', () => {
+    loadFilms();
+    updateStats();
+    displayFilms();
 });
 
-// ========================================
-// 📄 GESTION DES PAGES
-// ========================================
+// Gestion des pages
 function showPage(pageId) {
     const pages = document.querySelectorAll('.page');
     pages.forEach(page => page.classList.remove('active'));
@@ -173,7 +23,7 @@ function showPage(pageId) {
         previousPage = Array.from(pages).find(p => p.classList.contains('active'))?.id || 'home-page';
     }
 
-    // Réinitialiser si on quitte la page d'ajout
+    // 🆕 RÉINITIALISER si on quitte la page d'ajout
     if (pageId !== 'add-film-page' && isEditMode) {
         isEditMode = false;
         editingFilmId = null;
@@ -183,15 +33,14 @@ function showPage(pageId) {
         }
     }
 
-    // Réinitialiser le formulaire si on arrive sur la page d'ajout sans être en mode édition
+    // 🆕 RÉINITIALISER le formulaire si on arrive sur la page d'ajout sans être en mode édition
     if (pageId === 'add-film-page' && !isEditMode) {
         resetForm();
     }
 
     document.getElementById(pageId).classList.add('active');
 
-    // Gérer l'affichage selon la page
-    if (pageId === 'library-page' || pageId === 'my-films-page') {
+    if (pageId === 'my-films-page') {
         displayFilms();
     } else if (pageId === 'search-page') {
         searchFilms();
@@ -212,10 +61,12 @@ function updateStats() {
     const totalFilms = films.length;
     const totalBluray = films.filter(f => f.format === 'Blu-ray').length;
     const totalDVD = films.filter(f => f.format === 'DVD').length;
+    const totalPV = films.filter(f => f.format === 'Prime Vidéo').length;
     
     document.getElementById('total-films').textContent = totalFilms;
     document.getElementById('total-bluray').textContent = totalBluray;
     document.getElementById('total-dvd').textContent = totalDVD;
+    document.getElementById('total-prime vidéo').textContent = totalPV;
 }
 
 // Gestion des images
@@ -341,7 +192,7 @@ function formatDuration(minutes, format = 'both') {
 }
 
 // Ajout d'un film
-async function addFilm() {
+function addFilm() {
     const name = document.getElementById('film-name').value.trim();
     const year = document.getElementById('film-year').value.trim();
     const genre = document.getElementById('film-genre').value;
@@ -375,7 +226,7 @@ async function addFilm() {
                 resolution: document.getElementById('film-resolution').value
             };
             
-            await saveFilms();
+            saveFilms();
             showMessage('Film modifié avec succès !', 'success');
             
             // Réinitialiser le mode édition
@@ -416,7 +267,7 @@ async function addFilm() {
     };
 
     films.push(film);
-    await saveFilms();
+    saveFilms();
     showMessage('Film ajouté avec succès !', 'success');
     resetForm();
     updateStats();
@@ -637,13 +488,13 @@ function editFilm() {
 
 
 // Suppression d'un film
-async function deleteFilm() {
+function deleteFilm() {
     if (currentFilmIndex === null) return;
     
     const film = films[currentFilmIndex];
     if (confirm(`Êtes-vous sûr de vouloir supprimer "${film.name}" ?`)) {
         films.splice(currentFilmIndex, 1);
-        await saveFilms();
+        saveFilms();
         showMessage('Film supprimé', 'success');
         updateStats();
         showPage(previousPage);
@@ -706,6 +557,18 @@ function searchOnRottenTomatoes() {
     window.open(url, '_blank');
 }
 
+// Sauvegarde et chargement
+function saveFilms() {
+    localStorage.setItem('ecrano-films', JSON.stringify(films));
+}
+
+function loadFilms() {
+    const saved = localStorage.getItem('ecrano-films');
+    if (saved) {
+        films = JSON.parse(saved);
+    }
+}
+
 // Export/Import
 function exportLibrary() {
     const dataStr = JSON.stringify(films, null, 2);
@@ -719,44 +582,26 @@ function exportLibrary() {
     showMessage('Bibliothèque exportée !', 'success');
 }
 
-// ✅ NOUVELLE version qui utilise l'input HTML existant
-async function importLibrary(event) {
+function importLibrary(event) {
     const file = event.target.files[0];
-    if (!file) return;
-
-    try {
-        const text = await file.text();
-        const imported = JSON.parse(text);
-
-        console.log('📊 Films importés:', imported.length);
-        console.log('📄 Premier film:', imported[0]);
-
-        if (!Array.isArray(imported) || imported.length === 0) {
-            showMessage('Fichier invalide ou vide', 'error');
-            return;
-        }
-
-        if (confirm(`Importer ${imported.length} films ?\nCela remplacera vos ${films.length} films actuels.`)) {
-            films = imported;
-            
-            // ✅ Sauvegarde dans IndexedDB
-            await saveFilms();
-            
-            updateStats();
-            displayFilms();
-            
-            const searchInput = document.getElementById('films-search');
-            if (searchInput) searchInput.value = '';
-
-            showMessage(`✅ ${imported.length} films importés !`, 'success');
-        }
-    } catch (error) {
-        console.error('❌ Erreur import:', error);
-        showMessage(`Erreur : ${error.message}`, 'error');
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const imported = JSON.parse(e.target.result);
+                if (confirm(`Importer ${imported.length} films ? Cela remplacera votre bibliothèque actuelle.`)) {
+                    films = imported;
+                    saveFilms();
+                    updateStats();
+                    displayFilms();
+                    showMessage('Bibliothèque importée !', 'success');
+                }
+            } catch (error) {
+                showMessage('Fichier invalide', 'error');
+            }
+        };
+        reader.readAsText(file);
     }
-
-    // ✅ Réinitialise l'input pour permettre le même fichier
-    event.target.value = '';
 }
 
 // Messages toast
@@ -768,22 +613,6 @@ function showMessage(message, type = 'success') {
         toast.classList.remove('show');
     }, 3000);
 }
-
-// ========================================
-// 🎬 INITIALISATION DE L'APPLICATION
-// ========================================
-window.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Application chargée');
-    
-    // ✅ Attache l'événement d'import au bouton existant
-    const importInput = document.getElementById('import-file');
-    if (importInput) {
-        importInput.addEventListener('change', importLibrary);
-        console.log('✅ Import attaché');
-    } else {
-        console.warn('⚠️ Input import non trouvé');
-    }
-});
 
 // ========================================
 // 📱 ENREGISTREMENT DU SERVICE WORKER (PWA)
