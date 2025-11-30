@@ -44,6 +44,10 @@
                 <h3 id="total-dvd">0</h3>
                 <p>DVD</p>
             </div>
+            <div class="stat-card">
+                <h3 id="total-prime vidéo">0</h3>
+                <p>Prime Vidéo</p>
+            </div>
         </div>
 
         <div class="home-buttons">
@@ -360,13 +364,13 @@
                 <button class="settings-btn" onclick="document.getElementById('import-file').click()">
                     📥 Importer une Bibliothèque
                 </button>
-                <input type="file" id="import-file" accept=".json,application/json,text/*" style="display: none;">
+                <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importLibrary(event)">
             </div>
 
             <div class="settings-section">
                 <h3>ℹ️ À propos</h3>
                 <p><strong>Application :</strong> ÉCRANO</p>
-                <p><strong>Version :</strong> 2.0.0</p>
+                <p><strong>Version :</strong> 2.1.0</p>
                 <p><strong>Créateur :</strong> © LEROY Aurélien - 2025</p>
             </div>
         </div>
@@ -378,4 +382,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-
