@@ -221,6 +221,10 @@ body {
     background: rgba(43, 43, 43, 0.90);
 }
 
+.film-card.prime {
+    background: rgba(229, 9, 20, 0.9);
+}
+
 .film-card:hover {
     transform: translateY(-10px);
     box-shadow: 0 8px 16px rgba(0,0,0,0.2);
