@@ -1,6 +1,6 @@
 // ------------------
 //| VERSION ANDROID |
-//------------------- Version 2.1.4
+//------------------- Version 2.1.5
 
 // Variables globales
 let films = [];
@@ -565,53 +565,149 @@ function searchOnRottenTomatoes() {
 // 💾 SAUVEGARDE ET CHARGEMENT
 // ========================================
 
-// Sauvegarder
+// ========================================
+// 🔧 INDEXEDDB : Ouvrir la base de données
+// ========================================
+function openDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('EcranoLibrary', 1);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('films')) {
+                db.createObjectStore('films', { keyPath: 'id' });
+            }
+        };
+    });
+}
+
+// ========================================
+// 💾 SAUVEGARDER (3 méthodes)
+// ========================================
 async function saveFilms() {
+    console.log('💾 Tentative de sauvegarde de', films.length, 'films...');
+
+    // 🪟 ELECTRON (Windows)
+    if (window.electronAPI) {
+        console.log('🖥️ Sauvegarde Electron');
+        await window.electronAPI.saveLibrary(films);
+        console.log('✅ Sauvegarde Electron OK');
+        return;
+    }
+
+    // 📱 WEB/PWA (Android/iOS)
+    const data = JSON.stringify(films);
+    let saveSuccess = false;
+
+    // ✅ MÉTHODE 1 : localStorage (rapide)
     try {
-        console.log('💾 Sauvegarde de', films.length, 'films...');
+        localStorage.setItem('ecranoLibrary', data);
+        console.log('✅ localStorage OK');
+        saveSuccess = true;
+    } catch (e) {
+        console.warn('⚠️ localStorage échoué:', e.message);
+    }
 
-        // 🪟 Electron (Windows)
-        if (window.electronAPI) {
-            console.log('🖥️ Sauvegarde Electron');
-            await window.electronAPI.saveLibrary(films);
-            console.log('✅ Sauvegarde Electron OK');
-            return;
-        }
+    // ✅ MÉTHODE 2 : IndexedDB (backup)
+    try {
+        const db = await openDB();
+        const tx = db.transaction('films', 'readwrite');
+        const store = tx.objectStore('films');
+        
+        await store.clear();
+        await store.put({ id: 'library', data: films });
+        
+        console.log('✅ IndexedDB OK');
+        saveSuccess = true;
+    } catch (e) {
+        console.warn('⚠️ IndexedDB échoué:', e.message);
+    }
 
-        // 📱 Web/PWA (Android/iOS)
-        console.log('🌐 Sauvegarde localStorage');
-        localStorage.setItem('ecranoLibrary', JSON.stringify(films));
-        console.log('✅ Sauvegarde localStorage OK');
+    // ✅ MÉTHODE 3 : Cache API (dernier recours)
+    try {
+        const cache = await caches.open('ecrano-backup-v1');
+        const blob = new Blob([data], { type: 'application/json' });
+        const response = new Response(blob);
+        await cache.put('/backup.json', response);
+        
+        console.log('✅ Cache API OK');
+        saveSuccess = true;
+    } catch (e) {
+        console.warn('⚠️ Cache API échoué:', e.message);
+    }
 
-    } catch (error) {
-        console.error('❌ Erreur sauvegarde:', error);
-        showMessage('Erreur lors de la sauvegarde', 'error');
+    if (!saveSuccess) {
+        console.error('❌ ÉCHEC TOTAL DE LA SAUVEGARDE');
+        showMessage('⚠️ Impossible de sauvegarder !', 'error');
+    } else {
+        console.log('✅ Sauvegarde réussie');
     }
 }
 
-// Charger
+// ========================================
+// 📂 CHARGER (3 méthodes)
+// ========================================
 async function loadFilms() {
-    try {
-        console.log('📂 Chargement des films...');
+    console.log('📂 Tentative de chargement...');
 
-        // 🪟 Electron (Windows)
-        if (window.electronAPI) {
-            console.log('🖥️ Chargement Electron');
-            films = await window.electronAPI.loadLibrary();
-            console.log('✅', films.length, 'films chargés');
+    // 🪟 ELECTRON (Windows)
+    if (window.electronAPI) {
+        console.log('🖥️ Chargement Electron');
+        films = await window.electronAPI.loadLibrary();
+        console.log('✅', films.length, 'films chargés');
+        return;
+    }
+
+    // 📱 WEB/PWA (Android/iOS)
+    
+    // ✅ MÉTHODE 1 : localStorage (rapide)
+    try {
+        const data = localStorage.getItem('ecranoLibrary');
+        if (data) {
+            films = JSON.parse(data);
+            console.log('✅ Chargé depuis localStorage:', films.length, 'films');
             return;
         }
-
-        // 📱 Web/PWA (Android/iOS)
-        console.log('🌐 Chargement localStorage');
-        const data = localStorage.getItem('ecranoLibrary');
-        films = data ? JSON.parse(data) : [];
-        console.log('✅', films.length, 'films chargés');
-
-    } catch (error) {
-        console.error('❌ Erreur chargement:', error);
-        films = [];
+    } catch (e) {
+        console.warn('⚠️ Erreur localStorage:', e.message);
     }
+
+    // ✅ MÉTHODE 2 : IndexedDB (backup)
+    try {
+        const db = await openDB();
+        const tx = db.transaction('films', 'readonly');
+        const store = tx.objectStore('films');
+        const result = await store.get('library');
+        
+        if (result && result.data) {
+            films = result.data;
+            console.log('✅ Chargé depuis IndexedDB:', films.length, 'films');
+            return;
+        }
+    } catch (e) {
+        console.warn('⚠️ Erreur IndexedDB:', e.message);
+    }
+
+    // ✅ MÉTHODE 3 : Cache API (dernier recours)
+    try {
+        const cache = await caches.open('ecrano-backup-v1');
+        const response = await cache.match('/backup.json');
+        
+        if (response) {
+            const text = await response.text();
+            films = JSON.parse(text);
+            console.log('✅ Chargé depuis Cache API:', films.length, 'films');
+            return;
+        }
+    } catch (e) {
+        console.warn('⚠️ Erreur Cache API:', e.message);
+    }
+
+    console.log('ℹ️ Aucune sauvegarde trouvée');
+    films = [];
 }
 
 // Import/Export
