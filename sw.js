@@ -1,4 +1,8 @@
-const CACHE_NAME = 'ecrano-v2.1.3';
+// ------------------
+//| VERSION ANDROID |
+//------------------- Version 2.1.4
+
+const CACHE_NAME = 'ecrano-v2.1.4';
 const urlsToCache = [
   '/',
   '/index.html',
