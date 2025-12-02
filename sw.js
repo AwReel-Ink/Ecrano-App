@@ -1,8 +1,8 @@
 // ------------------
 //| VERSION ANDROID |
-//------------------- Version 2.1.4
+//------------------- Version 2.1.5
 
-const CACHE_NAME = 'ecrano-v2.1.4';
+const CACHE_NAME = 'ecrano-v2.1.5';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -63,3 +63,4 @@ self.addEventListener('fetch', event => {
       })
   );
 });
+
