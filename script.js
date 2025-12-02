@@ -1,3 +1,7 @@
+// ------------------
+//| VERSION ANDROID |
+//------------------- Version 2.1.4
+
 // Variables globales
 let films = [];
 let personalRating = 0;
@@ -13,25 +17,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateStats();
     displayFilms();
 });
-
-// ========================================
-// 🗄️ INDEXEDDB
-// ========================================
-function openDatabase() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open('EcranoLibrary', 1);
-        
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-        
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains('films')) {
-                db.createObjectStore('films', { keyPath: 'id' });
-            }
-        };
-    });
-}
 
 // Gestion des pages
 function showPage(pageId) {
@@ -577,15 +562,15 @@ function searchOnRottenTomatoes() {
 }
 
 // ========================================
-// 💾 SAUVEGARDE ET CHARGEMENT (IndexedDB)
+// 💾 SAUVEGARDE ET CHARGEMENT
 // ========================================
 
-// Sauvegarder dans IndexedDB
+// Sauvegarder
 async function saveFilms() {
     try {
         console.log('💾 Sauvegarde de', films.length, 'films...');
 
-        // Electron
+        // 🪟 Electron (Windows)
         if (window.electronAPI) {
             console.log('🖥️ Sauvegarde Electron');
             await window.electronAPI.saveLibrary(films);
@@ -593,33 +578,23 @@ async function saveFilms() {
             return;
         }
 
-        // Web - IndexedDB
-        console.log('🌐 Sauvegarde IndexedDB');
-        const db = await openDatabase();
-        const tx = db.transaction('films', 'readwrite');
-        const store = tx.objectStore('films');
-        
-        // Vider et remplir
-        await store.clear();
-        for (const film of films) {
-            await store.put(film);
-        }
-        
-        await tx.done;
-        console.log('✅ Sauvegarde IndexedDB OK');
-        
+        // 📱 Web/PWA (Android/iOS)
+        console.log('🌐 Sauvegarde localStorage');
+        localStorage.setItem('ecranoLibrary', JSON.stringify(films));
+        console.log('✅ Sauvegarde localStorage OK');
+
     } catch (error) {
         console.error('❌ Erreur sauvegarde:', error);
         showMessage('Erreur lors de la sauvegarde', 'error');
     }
 }
 
-// Charger depuis IndexedDB
+// Charger
 async function loadFilms() {
     try {
         console.log('📂 Chargement des films...');
 
-        // Electron
+        // 🪟 Electron (Windows)
         if (window.electronAPI) {
             console.log('🖥️ Chargement Electron');
             films = await window.electronAPI.loadLibrary();
@@ -627,14 +602,12 @@ async function loadFilms() {
             return;
         }
 
-        // Web - IndexedDB
-        console.log('🌐 Chargement IndexedDB');
-        const db = await openDatabase();
-        const tx = db.transaction('films', 'readonly');
-        const store = tx.objectStore('films');
-        films = await store.getAll();
+        // 📱 Web/PWA (Android/iOS)
+        console.log('🌐 Chargement localStorage');
+        const data = localStorage.getItem('ecranoLibrary');
+        films = data ? JSON.parse(data) : [];
         console.log('✅', films.length, 'films chargés');
-        
+
     } catch (error) {
         console.error('❌ Erreur chargement:', error);
         films = [];
