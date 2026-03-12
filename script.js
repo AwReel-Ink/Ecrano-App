@@ -1,6 +1,6 @@
 // ------------------
 //| VERSION ANDROID |
-//------------------- Version 2.1.5
+//------------------- Version 2.2.0
 
 // Variables globales
 let films = [];
@@ -17,6 +17,56 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateStats();
     displayFilms();
 });
+
+// ========================================
+// 🗜️ COMPRESSION D'IMAGE (NOUVEAU)
+// ========================================
+async function compressImage(base64String) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // ✅ Calculer nouvelles dimensions (hauteur max 410px)
+            const MAX_HEIGHT = 410;
+            let width = img.width;
+            let height = img.height;
+
+            if (height > MAX_HEIGHT) {
+                width = Math.round((width * MAX_HEIGHT) / height);
+                height = MAX_HEIGHT;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            // ✅ Dessiner l'image redimensionnée
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // ✅ Compresser jusqu'à ≤ 30 Ko
+            let quality = 0.70;
+            let result = canvas.toDataURL('image/jpeg', quality);
+
+            while (getBase64Size(result) > 30 && quality > 0.1) {
+                quality -= 0.05;
+                result = canvas.toDataURL('image/jpeg', quality);
+            }
+
+            console.log(`🗜️ Image compressée: ${getBase64Size(result)} Ko (qualité: ${quality.toFixed(2)})`);
+            resolve(result);
+        };
+        img.src = base64String;
+    });
+}
+
+// ========================================
+// 📏 CALCULER TAILLE BASE64 (NOUVEAU)
+// ========================================
+function getBase64Size(base64String) {
+    const base64Length = base64String.split(',')[1].length;
+    return Math.round((base64Length * 3) / 4 / 1024); // En Ko
+}
 
 // Gestion des pages
 function showPage(pageId) {
@@ -73,18 +123,39 @@ function updateStats() {
     document.getElementById('total-prime').textContent = totalPrime;
 }
 
-// Gestion des images
+// ========================
+// 🖼️ GESTION UPLOAD IMAGE
+// ========================
 function handleImageUpload(event, side) {
     const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const preview = document.getElementById(`image-preview-${side}`);
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-    }
+    if (!file) return;
+
+    console.log(`📸 Upload ${side}:`, file.name, `(${(file.size / 1024).toFixed(1)} Ko)`);
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const originalBase64 = e.target.result;
+        const originalSize = getBase64Size(originalBase64);
+
+        console.log(`📊 Taille originale: ${originalSize} Ko`);
+
+        // ✅ COMPRESSION AUTOMATIQUE
+        let finalBase64 = originalBase64;
+        if (originalSize > 30) {
+            console.log('🗜️ Compression nécessaire...');
+            finalBase64 = await compressImage(originalBase64);
+            console.log(`✅ Compressé de ${originalSize} Ko → ${getBase64Size(finalBase64)} Ko`);
+        } else {
+            console.log('✅ Image déjà optimale, pas de compression');
+        }
+
+        // ✅ Afficher l'aperçu
+        const preview = document.getElementById(`image-preview-${side}`);
+        preview.src = finalBase64;
+        preview.style.display = 'block';
+    };
+
+    reader.readAsDataURL(file);
 }
 
 function addImageFromURL(side) {
@@ -662,7 +733,7 @@ async function loadFilms() {
     }
 
     // 📱 WEB/PWA (Android/iOS)
-    
+
     // ✅ MÉTHODE 1 : localStorage (rapide)
     try {
         const data = localStorage.getItem('ecranoLibrary');
@@ -677,13 +748,9 @@ async function loadFilms() {
 
     // ✅ MÉTHODE 2 : IndexedDB (backup)
     try {
-        const db = await openDB();
-        const tx = db.transaction('films', 'readonly');
-        const store = tx.objectStore('films');
-        const result = await store.get('library');
-        
-        if (result && result.data) {
-            films = result.data;
+        const result = await loadFromIndexedDB();
+        if (result && Array.isArray(result)) {
+            films = result;
             console.log('✅ Chargé depuis IndexedDB:', films.length, 'films');
             return;
         }
@@ -695,7 +762,7 @@ async function loadFilms() {
     try {
         const cache = await caches.open('ecrano-backup-v1');
         const response = await cache.match('/backup.json');
-        
+
         if (response) {
             const text = await response.text();
             films = JSON.parse(text);
@@ -710,50 +777,295 @@ async function loadFilms() {
     films = [];
 }
 
+// ========================================
+// 🗄️ FONCTION HELPER POUR INDEXEDDB
+// ========================================
+function loadFromIndexedDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('EcranoLibrary', 1);
+
+        request.onerror = () => {
+            console.error('❌ Erreur ouverture IndexedDB');
+            reject(request.error);
+        };
+
+        request.onsuccess = (event) => {
+            const db = event.target.result;
+            
+            // Vérifie que l'objectStore existe
+            if (!db.objectStoreNames.contains('films')) {
+                console.log('📭 ObjectStore "films" inexistant');
+                resolve(null);
+                return;
+            }
+
+            const transaction = db.transaction(['films'], 'readonly');
+            const objectStore = transaction.objectStore('films');
+            const getRequest = objectStore.get('library');
+
+            getRequest.onsuccess = () => {
+                const stored = getRequest.result;
+                if (stored && stored.data && Array.isArray(stored.data)) {
+                    resolve(stored.data);
+                } else {
+                    console.log('📭 Aucune donnée dans IndexedDB');
+                    resolve(null);
+                }
+            };
+
+            getRequest.onerror = () => {
+                console.error('❌ Erreur lecture IndexedDB');
+                reject(getRequest.error);
+            };
+        };
+
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('films')) {
+                db.createObjectStore('films');
+                console.log('🗄️ ObjectStore "films" créé');
+            }
+        };
+    });
+}
+
 // Import/Export
 async function exportLibrary() {
-    const dataStr = JSON.stringify(films, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ecrano-library-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    showMessage('Bibliothèque exportée !', 'success');
+    console.log("🔥🔥🔥 EXPORT CLIQUÉ !!! 🔥🔥🔥");
+    console.log("📚 Nombre de films:", films.length);
+
+    // ✅ VÉRIFICATION ET COMPRESSION DES IMAGES (NOUVEAU)
+    console.log("🔍 Vérification des images...");
+    let imagesCompressed = 0;
+
+    for (let i = 0; i < films.length; i++) {
+        const film = films[i];
+        
+        // Recto
+        if (film.imageRecto) {
+            const size = getBase64Size(film.imageRecto);
+            if (size > 30) {
+                console.log(`🗜️ Film ${i + 1}: Compression recto (${size} Ko → ...)`);
+                film.imageRecto = await compressImage(film.imageRecto);
+                imagesCompressed++;
+            }
+        }
+
+        // Verso
+        if (film.imageVerso) {
+            const size = getBase64Size(film.imageVerso);
+            if (size > 30) {
+                console.log(`🗜️ Film ${i + 1}: Compression verso (${size} Ko → ...)`);
+                film.imageVerso = await compressImage(film.imageVerso);
+                imagesCompressed++;
+            }
+        }
+    }
+
+    if (imagesCompressed > 0) {
+        console.log(`✅ ${imagesCompressed} images compressées avant export`);
+        await saveFilms(); // Sauvegarder les versions compressées
+    }
+
+    let counterDiv = null;
+
+    try {
+        const dataStr = JSON.stringify(films, null, 2);
+        console.log("✅ JSON créé, taille:", dataStr.length, "caractères");
+
+        const date = new Date();
+        const dateStr = date.toISOString().split('T')[0];
+        const fileName = `ecrano-library-${dateStr}.json`;
+        console.log("📝 Nom du fichier:", fileName);
+
+        // ✅ VÉRIFICATION CAPACITOR
+        if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.Filesystem) {
+            console.log("📱 Utilisation de Capacitor.Plugins.Filesystem");
+
+            // ✅ SUPPRESSION DU FICHIER S'IL EXISTE
+            try {
+                await Capacitor.Plugins.Filesystem.deleteFile({
+                    path: fileName,
+                    directory: 'DOCUMENTS'
+                });
+                console.log("🗑️ Ancien fichier supprimé");
+            } catch (e) {
+                console.log("ℹ️ Pas d'ancien fichier à supprimer");
+            }
+
+            // ✅ ÉCRITURE INITIALE (pour créer le fichier)
+            console.log("📝 Création du fichier...");
+            await Capacitor.Plugins.Filesystem.writeFile({
+                path: fileName,
+                data: '',
+                directory: 'DOCUMENTS',
+                encoding: 'utf8'
+            });
+
+            // ✅ ÉCRITURE PAR CHUNKS DE 500 KB (UTF-8)
+            const CHUNK_SIZE = 512 * 1024; // 500 KB
+            const chunks = [];
+
+            console.log("🔄 Découpage en chunks de 500 KB...");
+            for (let i = 0; i < dataStr.length; i += CHUNK_SIZE) {
+                chunks.push(dataStr.slice(i, i + CHUNK_SIZE));
+            }
+            console.log(`✅ ${chunks.length} chunks créés`);
+
+            // ✅ CRÉATION DU COMPTEUR EN JS (APRÈS avoir chunks.length)
+            counterDiv = document.createElement('div');
+            counterDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.95);
+                color: white;
+                padding: 32px 64px;
+                border-radius: 20px;
+                font-family: 'Courier New', monospace;
+                z-index: 10000;
+                box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7);
+                text-align: center;
+            `;
+            counterDiv.innerHTML = `
+                <div style="font-size: 18px; margin-bottom: 12px; opacity: 0.8;">Exportation...</div>
+                <div id="counter-number" style="font-size: 48px; font-weight: 700; letter-spacing: 4px;">0/${chunks.length}</div>
+            `;
+            document.body.appendChild(counterDiv);
+
+            // ✅ ÉCRITURE CHUNK PAR CHUNK
+            for (let i = 0; i < chunks.length; i++) {
+                console.log(`📝 Écriture chunk ${i + 1}/${chunks.length}...`);
+
+                // ✅ MISE À JOUR DU COMPTEUR
+                document.getElementById('counter-number').textContent = `${i + 1}/${chunks.length}`;
+
+                await Capacitor.Plugins.Filesystem.appendFile({
+                    path: fileName,
+                    data: chunks[i],
+                    directory: 'DOCUMENTS',
+                    encoding: 'utf8'
+                });
+
+                // ✅ PETIT DÉLAI
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+
+            console.log("✅ Tous les chunks écrits !");
+
+            // ✅ VÉRIFICATION
+            const check = await Capacitor.Plugins.Filesystem.stat({
+                path: fileName,
+                directory: 'DOCUMENTS'
+            });
+            console.log("📊 Taille finale:", check.size, "bytes");
+            console.log("📂 Chemin:", check.uri);
+
+            // ✅ TEST DE LECTURE (SEULEMENT LE DÉBUT)
+            console.log("🔍 Vérification du format...");
+            const preview = dataStr.substring(0, 100);
+            console.log("📄 Début du fichier:", preview);
+
+            // ✅ SUPPRIME LE COMPTEUR
+            if (counterDiv) {
+                document.body.removeChild(counterDiv);
+            }
+
+            if (preview.startsWith('[')) {
+                console.log("✅ Fichier valide (JSON détecté)");
+                showMessage(`✅ ${films.length} films exportés (${(check.size / 1024 / 1024).toFixed(1)} MB)`, 'success');
+            } else {
+                console.error("❌ Fichier corrompu (pas de JSON)");
+                showMessage('❌ Erreur: fichier corrompu', 'error');
+            }
+
+            return;
+        }
+
+        // ✅ FALLBACK WEB
+        console.log("🌐 Fallback sur Blob");
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+
+        setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }, 100);
+
+        showMessage(`✅ ${films.length} films exportés !`, 'success');
+
+    } catch (error) {
+        console.error('❌ ERREUR EXPORT:', error);
+        console.error('❌ Message:', error.message);
+        console.error('❌ Stack:', error.stack);
+
+        // ✅ SUPPRIME LE COMPTEUR EN CAS D'ERREUR
+        if (counterDiv && counterDiv.parentNode) {
+            document.body.removeChild(counterDiv);
+        }
+
+        showMessage(`❌ Erreur: ${error.message}`, 'error');
+    }
 }
 
 async function importLibrary(event) {
+    console.log("📥 IMPORT CLIQUÉ !");
     const file = event.target.files[0];
-    if (!file) return;
+    
+    if (!file) {
+        console.log("⚠️ Aucun fichier sélectionné");
+        return;
+    }
+
+    console.log("📄 Fichier sélectionné:", file.name, file.size, "bytes");
 
     const reader = new FileReader();
     reader.onload = async (e) => {
         try {
+            console.log("📖 Lecture du fichier...");
             const imported = JSON.parse(e.target.result);
-            
+            console.log("✅ JSON parsé:", imported.length, "films");
+
             if (!Array.isArray(imported)) {
+                console.error("❌ Le fichier n'est pas un tableau");
                 showMessage('Fichier invalide', 'error');
                 return;
             }
 
             if (confirm(`Importer ${imported.length} films ? Cela remplacera votre bibliothèque actuelle.`)) {
+                console.log("✅ Confirmation utilisateur");
                 films = imported;
-                await saveFilms(); // ✅ ASYNC
+                await saveFilms();
                 updateStats();
                 displayFilms();
                 showMessage('Bibliothèque importée !', 'success');
+                console.log("✅ Import terminé !");
+            } else {
+                console.log("⚠️ Import annulé par l'utilisateur");
             }
         } catch (error) {
-            console.error('Erreur import:', error);
+            console.error('❌ Erreur import:', error);
+            console.error('❌ Stack:', error.stack);
             showMessage('Fichier invalide', 'error');
         }
     };
+    
+    reader.onerror = (error) => {
+        console.error('❌ Erreur lecture fichier:', error);
+    };
+    
     reader.readAsText(file);
 }
 
 // Messages toast
 function showMessage(message, type = 'success') {
+    console.log(`💬 Message (${type}):`, message);
     const toast = document.getElementById('toast');
     toast.textContent = message;
     toast.className = `toast ${type} show`;
