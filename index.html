@@ -1,10 +1,9 @@
+<!DOCTYPE html>
 <!--
 // ------------------
 //| VERSION ANDROID |
-//------------------- Version 2.2.0
+//------------------- Version 2.3.0
 -->
-
-<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -15,7 +14,6 @@
     
     <!-- Apple Touch Icons -->
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
-    <link rel="apple-touch-icon" sizes="72x72" href="icons/icon-48x48.png">
     <link rel="apple-touch-icon" sizes="72x72" href="icons/icon-72x72.png">
     <link rel="apple-touch-icon" sizes="96x96" href="icons/icon-96x96.png">
     <link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144x144.png">
@@ -23,8 +21,8 @@
     <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512x512.png">
     
     <!-- Favicons -->
-    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16x16.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="icons/icon-48x48.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="icons/icon-96x96.png">
     
     <title>ÉCRANO - Évaluation, Classification, Rangement et Archivage Numérique des Œuvres</title>
     <link rel="stylesheet" href="style.css">
@@ -370,13 +368,16 @@
                 <button class="settings-btn" onclick="document.getElementById('import-file').click()">
                     📥 Importer une Bibliothèque
                 </button>
-                <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importLibrary(event)">
+                <input type="file" id="import-file" accept=".json,application/json" style="display: none;" onchange="importLibrary(event)">
+                <button class="settings-btn" id="btn-serveur-maison" onclick="ouvrirServeurMaison()">
+                    🏠 Serveur maison
+                </button>
             </div>
 
             <div class="settings-section">
                 <h3>ℹ️ À propos</h3>
                 <p><strong>Application :</strong> ÉCRANO</p>
-                <p><strong>Version :</strong> 2.2.0</p>
+                <p><strong>Version :</strong> 2.3.0</p>
                 <p><strong>Créateur :</strong> © LEROY Aurélien - 2025</p>
             </div>
         </div>
@@ -396,6 +397,7 @@
       });
     </script>
 
+    <script src="sync-maison.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
