@@ -2,7 +2,7 @@
 //| VERSION ANDROID |
 //------------------- Version 2.3.0
 
-const CACHE_NAME = 'ecrano-v2.3.0';
+const CACHE_NAME = 'ecrano-v2.3.1';
 
 // Chemins RELATIFS : l'appli est publiée sous /Ecrano-App/ sur GitHub Pages
 const urlsToCache = [
